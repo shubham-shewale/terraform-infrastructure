@@ -44,10 +44,7 @@ resource "aws_internet_gateway" "main" {
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
+  # No default route here; added in root for TGW
 
   tags = merge(
     var.tags,
@@ -66,9 +63,9 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# CIS Benchmark: Enable VPC flow logs
+# CIS: VPC flow logs
 resource "aws_flow_log" "vpc_flow_log" {
-  iam_role_arn    = aws_iam_role.flow_log_role.arn  # Assume role created below
+  iam_role_arn    = aws_iam_role.flow_log_role.arn
   log_destination = aws_cloudwatch_log_group.flow_log.arn
   traffic_type    = "ALL"
   vpc_id          = aws_vpc.main.id
@@ -76,7 +73,7 @@ resource "aws_flow_log" "vpc_flow_log" {
 
 resource "aws_cloudwatch_log_group" "flow_log" {
   name              = "/aws/vpc/flowlogs/ingress-${var.environment}"
-  retention_in_days = 90  # Org standard; adjust as needed
+  retention_in_days = 90
 }
 
 resource "aws_iam_role" "flow_log_role" {

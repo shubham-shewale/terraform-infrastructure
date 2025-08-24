@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    if: contains(github.event.head_commit.message, 'Test AWS OIDC Connection')
 
 permissions:
   id-token: write
@@ -27,4 +26,4 @@ jobs:
           terraform_version: 1.9.5
 
       - run: terraform init
-      - run: terraform apply -auto-approve
+      - run: terraform plan

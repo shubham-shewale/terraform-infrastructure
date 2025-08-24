@@ -11,19 +11,62 @@ variable "environment" {
 }
 
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+  description = "CIDR block for the Ingress VPC"
   type        = string
   default     = "10.0.0.0/16"
 }
 
 variable "public_subnets" {
-  description = "List of public subnet CIDRs (at least 2 for ALB HA)"
+  description = "List of public subnet CIDRs for Ingress (3 for HA)"
   type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+}
+
+variable "webapp_vpc_cidr" {
+  description = "CIDR block for the Web App VPC"
+  type        = string
+  default     = "10.1.0.0/16"
+}
+
+variable "webapp_private_subnets" {
+  description = "List of private subnet CIDRs for Web App"
+  type        = list(string)
+  default     = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
+}
+
+variable "egress_vpc_cidr" {
+  description = "CIDR block for the Secure Egress VPC"
+  type        = string
+  default     = "10.2.0.0/16"
+}
+
+variable "egress_public_subnets" {
+  description = "List of public subnet CIDRs for Egress (NAT GW)"
+  type        = list(string)
+  default     = ["10.2.1.0/24", "10.2.2.0/24", "10.2.3.0/24"]
+}
+
+variable "egress_private_subnets" {
+  description = "List of private subnet CIDRs for Egress (TGW attachment)"
+  type        = list(string)
+  default     = ["10.2.4.0/24", "10.2.5.0/24", "10.2.6.0/24"]
 }
 
 variable "availability_zones" {
   description = "List of availability zones"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
+
+variable "access_logs_bucket" {
+  description = "S3 bucket for ALB access logs"
+  type        = string
+  default     = "alb-logs-default"  # Replace with org bucket
+}
+
+# variable "acm_certificate_arn" {
+#   description = "ACM certificate ARN for HTTPS"
+#   type        = string
+# }
+
+# Add org-specific variables here

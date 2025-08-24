@@ -1,4 +1,3 @@
-# modules/nacl/main.tf
 
 resource "aws_network_acl" "public" {
   vpc_id = var.vpc_id

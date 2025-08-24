@@ -1,4 +1,3 @@
-# modules/nacl/variables.tf
 
 variable "environment" {
   type = string
@@ -13,7 +12,6 @@ variable "public_subnets" {
 }
 
 variable "tags" {
-  description = "Additional tags (org-specific)"
   type        = map(string)
   default     = {}
 }
