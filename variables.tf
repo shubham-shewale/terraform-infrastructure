@@ -67,7 +67,7 @@ variable "access_logs_bucket" {
 variable "domain_name" {
   description = "Domain name for ACM certificate"
   type        = string
-  default     = "730335448602.realhandsonlabs.net "  # Replace with your domain
+  default     = "app.realhandsonlabs.net "  # Replace with your domain
 }
 
 variable "hosted_zone_id" {
