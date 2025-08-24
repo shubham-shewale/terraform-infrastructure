@@ -20,9 +20,10 @@ variable "access_logs_bucket" {
   default     = "alb-logs-default"  # Replace with org bucket
 }
 
-# variable "acm_certificate_arn" {
-#   type = string
-# }
+variable "certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for HTTPS"
+}
 
 variable "tags" {
   description = "Additional tags (org-specific)"

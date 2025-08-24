@@ -64,9 +64,14 @@ variable "access_logs_bucket" {
   default     = "alb-logs-default"  # Replace with org bucket
 }
 
-# variable "acm_certificate_arn" {
-#   description = "ACM certificate ARN for HTTPS"
-#   type        = string
-# }
+variable "domain_name" {
+  description = "Domain name for ACM certificate"
+  type        = string
+  default     = "381492019459.realhandsonlabs.net "  # Replace with your domain
+}
 
-# Add org-specific variables here
+variable "hosted_zone_id" {
+  description = "Route53 hosted zone ID for domain validation"
+  type        = string
+  default     = "Z08271382D0VDKC7UNW9H"  # Provide your hosted zone ID
+}

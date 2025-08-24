@@ -38,7 +38,7 @@ module "web_sg" {
 
   environment   = var.environment
   vpc_id        = module.webapp_vpc.vpc_id
-  ingress_cidr  = var.vpc_cidr  # Allow from Ingress VPC
+  ingress_cidr  = var.vpc_cidr
 }
 
 module "nacl" {
@@ -51,13 +51,12 @@ module "nacl" {
 
 module "alb" {
   source = "./modules/alb"
-
-  environment     = var.environment
-  vpc_id          = module.vpc.vpc_id
-  public_subnets  = module.vpc.public_subnets
-  security_groups = [module.alb_sg.security_group_id]
-  access_logs_bucket = var.access_logs_bucket
-  # acm_certificate_arn = var.acm_certificate_arn
+  environment         = var.environment
+  vpc_id              = module.vpc.vpc_id
+  public_subnets      = module.vpc.public_subnets
+  security_groups     = [module.alb_sg.security_group_id]
+  access_logs_bucket  = var.access_logs_bucket
+  certificate_arn     = aws_acm_certificate_validation.main.certificate_arn
 }
 
 module "ec2_web" {
@@ -204,4 +203,42 @@ resource "aws_lb_target_group_attachment" "web" {
   target_group_arn = module.alb.target_group_arn
   target_id        = module.ec2_web.private_ips[count.index]
   port             = 80
+}
+
+# ACM Certificate for HTTPS
+resource "aws_acm_certificate" "main" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  tags = {
+    Name        = "alb-cert-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = var.hosted_zone_id
+}
+
+resource "aws_acm_certificate_validation" "main" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
