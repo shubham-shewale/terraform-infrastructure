@@ -5,6 +5,7 @@ module "vpc" {
   vpc_cidr           = var.vpc_cidr
   public_subnets     = var.public_subnets
   availability_zones = var.availability_zones
+  flow_log_role_arn  = aws_iam_role.flow_log_role.arn  # Reuse single role
 }
 
 module "webapp_vpc" {
@@ -14,6 +15,7 @@ module "webapp_vpc" {
   vpc_cidr           = var.webapp_vpc_cidr
   private_subnets    = var.webapp_private_subnets
   availability_zones = var.availability_zones
+  flow_log_role_arn  = aws_iam_role.flow_log_role.arn
 }
 
 module "egress_vpc" {
@@ -24,6 +26,7 @@ module "egress_vpc" {
   public_subnets     = var.egress_public_subnets
   private_subnets    = var.egress_private_subnets
   availability_zones = var.availability_zones
+  flow_log_role_arn  = aws_iam_role.flow_log_role.arn
 }
 
 module "alb_sg" {
@@ -51,6 +54,7 @@ module "nacl" {
 
 module "alb" {
   source = "./modules/alb"
+
   environment         = var.environment
   vpc_id              = module.vpc.vpc_id
   public_subnets      = module.vpc.public_subnets
@@ -65,6 +69,51 @@ module "ec2_web" {
   environment     = var.environment
   subnets         = module.webapp_vpc.private_subnets
   security_groups = [module.web_sg.security_group_id]
+}
+
+# Single IAM Role for VPC Flow Logs
+resource "aws_iam_role" "flow_log_role" {
+  name = "vpc-flow-log-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "vpc-flow-log-role-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}
+
+resource "aws_iam_role_policy" "flow_log_policy" {
+  role = aws_iam_role.flow_log_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # Transit Gateway
@@ -99,6 +148,8 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "ingress" {
     Environment = var.environment
     Terraform   = "true"
   }
+
+  depends_on = [module.vpc]
 }
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "webapp" {
@@ -111,6 +162,8 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "webapp" {
     Environment = var.environment
     Terraform   = "true"
   }
+
+  depends_on = [module.webapp_vpc]
 }
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
@@ -123,6 +176,8 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
     Environment = var.environment
     Terraform   = "true"
   }
+
+  depends_on = [module.egress_vpc]
 }
 
 # TGW Route Table Associations and Propagations
@@ -139,6 +194,12 @@ resource "aws_ec2_transit_gateway_route_table_association" "main" {
 
   transit_gateway_attachment_id  = each.value
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.ingress,
+    aws_ec2_transit_gateway_vpc_attachment.webapp,
+    aws_ec2_transit_gateway_vpc_attachment.egress
+  ]
 }
 
 resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
@@ -146,6 +207,12 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
 
   transit_gateway_attachment_id  = each.value
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.ingress,
+    aws_ec2_transit_gateway_vpc_attachment.webapp,
+    aws_ec2_transit_gateway_vpc_attachment.egress
+  ]
 }
 
 # TGW Default Route to Egress
@@ -153,34 +220,41 @@ resource "aws_ec2_transit_gateway_route" "default" {
   destination_cidr_block         = "0.0.0.0/0"
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.egress]
 }
 
 # Routes in VPC Route Tables
-# Ingress: Default to TGW (secure outbound), specific not needed as default covers
 resource "aws_route" "ingress_default" {
   route_table_id            = module.vpc.public_route_table_id
   destination_cidr_block    = "0.0.0.0/0"
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.ingress]
 }
 
-# Web App: Default to TGW
 resource "aws_route" "webapp_default" {
   route_table_id            = module.webapp_vpc.private_route_table_id
   destination_cidr_block    = "0.0.0.0/0"
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.webapp]
 }
 
-# Egress: Specific routes to TGW for other VPCs (public and private RTs)
 resource "aws_route" "egress_public_to_ingress" {
   route_table_id            = module.egress_vpc.public_route_table_id
   destination_cidr_block    = var.vpc_cidr
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.egress]
 }
 
 resource "aws_route" "egress_public_to_webapp" {
   route_table_id            = module.egress_vpc.public_route_table_id
   destination_cidr_block    = var.webapp_vpc_cidr
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.egress]
 }
 
 resource "aws_route" "egress_private_to_ingress" {
@@ -188,6 +262,8 @@ resource "aws_route" "egress_private_to_ingress" {
   route_table_id            = module.egress_vpc.private_route_table_ids[count.index]
   destination_cidr_block    = var.vpc_cidr
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.egress]
 }
 
 resource "aws_route" "egress_private_to_webapp" {
@@ -195,14 +271,22 @@ resource "aws_route" "egress_private_to_webapp" {
   route_table_id            = module.egress_vpc.private_route_table_ids[count.index]
   destination_cidr_block    = var.webapp_vpc_cidr
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.egress]
 }
 
-# ALB Target Group Attachments (IP targets for cross-VPC)
+# ALB Target Group Attachments
 resource "aws_lb_target_group_attachment" "web" {
   count            = length(var.availability_zones)
   target_group_arn = module.alb.target_group_arn
   target_id        = module.ec2_web.private_ips[count.index]
   port             = 80
+
+  depends_on = [
+    module.ec2_web,
+    aws_ec2_transit_gateway_vpc_attachment.ingress,
+    aws_ec2_transit_gateway_vpc_attachment.webapp
+  ]
 }
 
 # ACM Certificate for HTTPS
@@ -241,4 +325,6 @@ resource "aws_route53_record" "cert_validation" {
 resource "aws_acm_certificate_validation" "main" {
   certificate_arn         = aws_acm_certificate.main.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+
+  depends_on = [aws_route53_record.cert_validation]
 }

@@ -1,4 +1,3 @@
-
 variable "environment" {
   type = string
 }
@@ -17,6 +16,10 @@ variable "private_subnets" {
 
 variable "availability_zones" {
   type = list(string)
+}
+
+variable "flow_log_role_arn" {
+  type = string
 }
 
 variable "tags" {

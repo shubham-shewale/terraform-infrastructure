@@ -14,6 +14,10 @@ variable "availability_zones" {
   type = list(string)
 }
 
+variable "flow_log_role_arn" {
+  type = string
+}
+
 variable "tags" {
   type        = map(string)
   default     = {}

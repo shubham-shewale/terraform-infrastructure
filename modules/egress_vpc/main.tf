@@ -1,4 +1,3 @@
-
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
 
@@ -84,7 +83,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# NAT Gateways (one per AZ for HA)
+# NAT Gateways
 resource "aws_eip" "nat" {
   count = length(var.public_subnets)
 
@@ -114,9 +113,10 @@ resource "aws_nat_gateway" "main" {
       Terraform   = "true"
     }
   )
+
+  depends_on = [aws_internet_gateway.main]
 }
 
-# Private Route Tables (one per AZ, route to local NAT)
 resource "aws_route_table" "private" {
   count = length(var.private_subnets)
 
@@ -146,7 +146,7 @@ resource "aws_route_table_association" "private" {
 
 # CIS: VPC flow logs
 resource "aws_flow_log" "vpc_flow_log" {
-  iam_role_arn    = aws_iam_role.flow_log_role.arn
+  iam_role_arn    = var.flow_log_role_arn
   log_destination = aws_cloudwatch_log_group.flow_log.arn
   traffic_type    = "ALL"
   vpc_id          = aws_vpc.main.id
@@ -155,42 +155,4 @@ resource "aws_flow_log" "vpc_flow_log" {
 resource "aws_cloudwatch_log_group" "flow_log" {
   name              = "/aws/vpc/flowlogs/egress-${var.environment}"
   retention_in_days = 90
-}
-
-resource "aws_iam_role" "flow_log_role" {
-  name = "vpc-flow-log-role-${var.environment}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "vpc-flow-logs.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "flow_log_policy" {
-  role = aws_iam_role.flow_log_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams"
-        ]
-        Effect   = "Allow"
-        Resource = "*"
-      }
-    ]
-  })
 }

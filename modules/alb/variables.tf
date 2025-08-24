@@ -17,7 +17,7 @@ variable "security_groups" {
 variable "access_logs_bucket" {
   description = "S3 bucket for ALB access logs"
   type        = string
-  default     = "alb-logs-default"  # Replace with org bucket
+  default     = "alb-logs-730335448602-us-east-1"  # Replace with org bucket
 }
 
 variable "certificate_arn" {

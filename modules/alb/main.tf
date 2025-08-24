@@ -4,8 +4,8 @@ resource "aws_lb" "web" {
   load_balancer_type = "application"
   security_groups    = var.security_groups
   subnets            = var.public_subnets
-
-  enable_deletion_protection = true  # CIS
+  enable_cross_zone_load_balancing = true  # Enable for cross-VPC targets
+  enable_deletion_protection = true
 
   access_logs {
     bucket  = var.access_logs_bucket
@@ -42,7 +42,7 @@ resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.web.arn
   port              = 443
   protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"  # Org standard; update as needed
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
   certificate_arn   = var.certificate_arn
 
   default_action {
