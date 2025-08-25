@@ -152,12 +152,30 @@ resource "aws_iam_instance_profile" "ssm_profile" {
   role = aws_iam_role.ssm_role.name
 }
 
+# Security Group for VPC Endpoints
+resource "aws_security_group" "vpc_endpoint_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [module.web_sg.security_group_id]
+  }
+
+  tags = {
+    Name        = "vpc-endpoint-sg"
+    Environment = var.environment
+  }
+}
+
+
 # VPC Endpoint for SSM
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id            = module.webapp_vpc.vpc_id
   service_name      = "com.amazonaws.${var.region}.ssm"
   vpc_endpoint_type = "Interface"
-  security_group_ids = [module.web_sg.security_group_id]
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   subnet_ids        = module.webapp_vpc.private_subnets
   private_dns_enabled = true
 
@@ -172,7 +190,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id            = module.webapp_vpc.vpc_id
   service_name      = "com.amazonaws.${var.region}.ssmmessages"
   vpc_endpoint_type = "Interface"
-  security_group_ids = [module.web_sg.security_group_id]
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   subnet_ids        = module.webapp_vpc.private_subnets
   private_dns_enabled = true
 
@@ -187,7 +205,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_id            = module.webapp_vpc.vpc_id
   service_name      = "com.amazonaws.${var.region}.ec2messages"
   vpc_endpoint_type = "Interface"
-  security_group_ids = [module.web_sg.security_group_id]
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   subnet_ids        = module.webapp_vpc.private_subnets
   private_dns_enabled = true
 
