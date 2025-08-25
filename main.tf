@@ -154,7 +154,7 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 # Security Group for VPC Endpoints
 resource "aws_security_group" "vpc_endpoint_sg" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = module.webapp_vpc.vpc_id
 
   ingress {
     from_port       = 443
