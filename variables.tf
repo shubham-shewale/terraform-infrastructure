@@ -70,6 +70,12 @@ variable "domain_name" {
   default     = "590183704678.realhandsonlabs.net"  # Replace with your domain
 }
 
+variable "alb_domain_name" {
+  description = "Domain name for ALB (e.g., app.realhandsonlabs.net)"
+  type        = string
+  default     = "590183704678.realhandsonlabs.net"
+}
+
 variable "hosted_zone_id" {
   description = "Route53 hosted zone ID for domain validation"
   type        = string

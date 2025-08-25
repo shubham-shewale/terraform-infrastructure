@@ -119,7 +119,10 @@ resource "aws_iam_role_policy" "flow_log_policy" {
 
 # Transit Gateway
 resource "aws_ec2_transit_gateway" "main" {
-  description = "Transit Gateway for VPC interconnect"
+  description                     = "Transit Gateway for VPC interconnect"
+  auto_accept_shared_attachments  = "disable"
+  default_route_table_association = "disable"
+  default_route_table_propagation = "disable"
 
   tags = {
     Name        = "tgw-${var.environment}"
@@ -136,6 +139,8 @@ resource "aws_ec2_transit_gateway_route_table" "main" {
     Environment = var.environment
     Terraform   = "true"
   }
+
+  depends_on = [aws_ec2_transit_gateway.main]
 }
 
 # TGW Attachments
@@ -179,6 +184,44 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
   }
 
   depends_on = [module.egress_vpc, aws_ec2_transit_gateway.main]
+}
+
+# TGW Route Table Associations
+locals {
+  attachments = {
+    ingress = aws_ec2_transit_gateway_vpc_attachment.ingress.id
+    webapp  = aws_ec2_transit_gateway_vpc_attachment.webapp.id
+    egress  = aws_ec2_transit_gateway_vpc_attachment.egress.id
+  }
+}
+
+resource "aws_ec2_transit_gateway_route_table_association" "main" {
+  for_each = local.attachments
+
+  transit_gateway_attachment_id  = each.value
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.ingress,
+    aws_ec2_transit_gateway_vpc_attachment.webapp,
+    aws_ec2_transit_gateway_vpc_attachment.egress,
+    aws_ec2_transit_gateway_route_table.main
+  ]
+}
+
+# TGW Route Table Propagations
+resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
+  for_each = local.attachments
+
+  transit_gateway_attachment_id  = each.value
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.ingress,
+    aws_ec2_transit_gateway_vpc_attachment.webapp,
+    aws_ec2_transit_gateway_vpc_attachment.egress,
+    aws_ec2_transit_gateway_route_table.main
+  ]
 }
 
 # TGW Default Route to Egress
@@ -324,11 +367,29 @@ resource "aws_acm_certificate_validation" "main" {
   certificate_arn         = aws_acm_certificate.main.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
   timeouts {
-    create = "5m"  # Allow extra time for DNS propagation
+    create = "5m"
   }
 
   depends_on = [
     aws_route53_record.cert_validation,
     aws_acm_certificate.main
+  ]
+}
+
+# Route53 Record for ALB
+resource "aws_route53_record" "alb" {
+  zone_id = var.hosted_zone_id
+  name    = var.alb_domain_name
+  type    = "A"
+
+  alias {
+    name                   = module.alb.dns_name
+    zone_id                = module.alb.zone_id
+    evaluate_target_health = true
+  }
+
+  depends_on = [
+    module.alb,
+    aws_acm_certificate_validation.main
   ]
 }
