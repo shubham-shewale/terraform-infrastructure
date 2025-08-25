@@ -8,10 +8,10 @@ output "target_group_arn" {
 }
 output "dns_name" {
   description = "The DNS name of the load balancer"
-  value       = aws_lb.main.dns_name
+  value       = aws_lb.web.dns_name
 }
 
 output "zone_id" {
   description = "The zone ID of the load balancer"
-  value       = aws_lb.main.zone_id
+  value       = aws_lb.web.zone_id
 }
