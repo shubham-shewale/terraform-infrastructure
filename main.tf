@@ -70,6 +70,7 @@ module "ec2_web" {
   environment     = var.environment
   subnets         = module.webapp_vpc.private_subnets
   security_groups = [module.web_sg.security_group_id]
+  iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
 }
 
 # Single IAM Role for VPC Flow Logs
@@ -115,6 +116,86 @@ resource "aws_iam_role_policy" "flow_log_policy" {
       }
     ]
   })
+}
+
+# IAM Role and Policy for SSM
+resource "aws_iam_role" "ssm_role" {
+  name = "ssm-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "ssm-role-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "ssm-profile-${var.environment}"
+  role = aws_iam_role.ssm_role.name
+}
+
+# VPC Endpoint for SSM
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id            = module.webapp_vpc.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ssm"
+  vpc_endpoint_type = "Interface"
+  security_group_ids = [module.web_sg.security_group_id]
+  subnet_ids        = module.webapp_vpc.private_subnets
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "ssm-endpoint-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}
+
+resource "aws_vpc_endpoint" "ssmmessages" {
+  vpc_id            = module.webapp_vpc.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  security_group_ids = [module.web_sg.security_group_id]
+  subnet_ids        = module.webapp_vpc.private_subnets
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "ssmmessages-endpoint-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}
+
+resource "aws_vpc_endpoint" "ec2messages" {
+  vpc_id            = module.webapp_vpc.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ec2messages"
+  vpc_endpoint_type = "Interface"
+  security_group_ids = [module.web_sg.security_group_id]
+  subnet_ids        = module.webapp_vpc.private_subnets
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "ec2messages-endpoint-${var.environment}"
+    Environment = var.environment
+    Terraform   = "true"
+  }
 }
 
 # Transit Gateway

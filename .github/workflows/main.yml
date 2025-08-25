@@ -1,4 +1,4 @@
-name: Test OIDC AWS Connection
+name: Main CI
 
 on:
   workflow_dispatch:
@@ -10,15 +10,14 @@ permissions:
   contents: read
 
 jobs:
-  test-oidc:
+  terraform-Iac:
     runs-on: ubuntu-latest
-    environment: terraform-infra
     steps:
       - uses: actions/checkout@v4
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID_DEV }}:role/${{ secrets.OIDC_ROLE_NAME_DEV }}
+          role-to-assume: arn:aws:iam::211125418662:role/aws-terraform-developer
           aws-region: us-east-1
 
       - uses: hashicorp/setup-terraform@v3

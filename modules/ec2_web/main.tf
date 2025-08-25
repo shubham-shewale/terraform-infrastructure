@@ -17,6 +17,7 @@ resource "aws_instance" "web" {
   instance_type          = "t3.micro"
   subnet_id              = var.subnets[count.index]
   vpc_security_group_ids = var.security_groups
+  iam_instance_profile   = var.iam_instance_profile
 
   user_data = <<-EOF
     #!/bin/bash
