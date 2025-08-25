@@ -42,3 +42,39 @@
         }
     ]
 }
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:*",
+                "elasticloadbalancing:*",
+                "acm:*",
+                "route53:*",
+                "s3:*",
+                "ksm:*",
+                "logs:*",
+                "iam:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::127311923021:root"
+            },
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::alb-logs-905418359995-us-east-1/*"
+        }
+    ]
+}

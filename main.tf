@@ -5,7 +5,7 @@ module "vpc" {
   vpc_cidr           = var.vpc_cidr
   public_subnets     = var.public_subnets
   availability_zones = var.availability_zones
-  flow_log_role_arn  = aws_iam_role.flow_log_role.arn  # Reuse single role
+  flow_log_role_arn  = aws_iam_role.flow_log_role.arn
 }
 
 module "webapp_vpc" {
@@ -32,8 +32,9 @@ module "egress_vpc" {
 module "alb_sg" {
   source = "./modules/alb_sg"
 
-  environment = var.environment
-  vpc_id      = module.vpc.vpc_id
+  environment   = var.environment
+  vpc_id        = module.vpc.vpc_id
+  webapp_cidr   = var.webapp_vpc_cidr  # Allow traffic from Web App VPC
 }
 
 module "web_sg" {
@@ -198,8 +199,13 @@ resource "aws_ec2_transit_gateway_route_table_association" "main" {
   depends_on = [
     aws_ec2_transit_gateway_vpc_attachment.ingress,
     aws_ec2_transit_gateway_vpc_attachment.webapp,
-    aws_ec2_transit_gateway_vpc_attachment.egress
+    aws_ec2_transit_gateway_vpc_attachment.egress,
+    aws_ec2_transit_gateway_route_table.main
   ]
+
+  lifecycle {
+    ignore_changes = [transit_gateway_route_table_id]
+  }
 }
 
 resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
@@ -211,7 +217,8 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
   depends_on = [
     aws_ec2_transit_gateway_vpc_attachment.ingress,
     aws_ec2_transit_gateway_vpc_attachment.webapp,
-    aws_ec2_transit_gateway_vpc_attachment.egress
+    aws_ec2_transit_gateway_vpc_attachment.egress,
+    aws_ec2_transit_gateway_route_table.main
   ]
 }
 
@@ -281,11 +288,13 @@ resource "aws_lb_target_group_attachment" "web" {
   target_group_arn = module.alb.target_group_arn
   target_id        = module.ec2_web.private_ips[count.index]
   port             = 80
+  availability_zone = "all"  # Allow cross-VPC targets
 
   depends_on = [
     module.ec2_web,
     aws_ec2_transit_gateway_vpc_attachment.ingress,
-    aws_ec2_transit_gateway_vpc_attachment.webapp
+    aws_ec2_transit_gateway_vpc_attachment.webapp,
+    module.alb
   ]
 }
 
@@ -309,7 +318,7 @@ resource "aws_route53_record" "cert_validation" {
   for_each = {
     for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
-      record = dvo.resource_record_value
+      record = dbo.resource_record_value
       type   = dvo.resource_record_type
     }
   }
