@@ -459,7 +459,7 @@ resource "aws_acm_certificate_validation" "main" {
 
 # Route53 Record for ALB
 resource "aws_route53_record" "alb" {
-  zone_id = module.alb.zone_id
+  zone_id = var.hosted_zone_id
   name    = var.alb_domain_name
   type    = "A"
 
