@@ -312,7 +312,7 @@ resource "aws_ec2_transit_gateway_route" "default" {
 # Routes in VPC Route Tables
 resource "aws_route" "ingress_default" {
   route_table_id            = module.vpc.public_route_table_id
-  destination_cidr_block    = "0.0.0.0/0"
+  destination_cidr_block    = "10.1.0.0/16"
   transit_gateway_id        = aws_ec2_transit_gateway.main.id
 
   depends_on = [
