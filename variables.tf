@@ -61,23 +61,23 @@ variable "availability_zones" {
 variable "access_logs_bucket" {
   description = "S3 bucket for ALB access logs"
   type        = string
-  default     = "alb-logs-058264474160-us-east-1"  # Replace with org bucket
+  default     = "alb-logs-381492080129-us-east-1"  # Replace with org bucket
 }
 
 variable "domain_name" {
   description = "Domain name for ACM certificate"
   type        = string
-  default     = "058264474160.realhandsonlabs.net"  # Replace with your domain
+  default     = "381492080129.realhandsonlabs.net"  # Replace with your domain
 }
 
 variable "alb_domain_name" {
   description = "Domain name for ALB (e.g., app.realhandsonlabs.net)"
   type        = string
-  default     = "058264474160.realhandsonlabs.net"
+  default     = "381492080129.realhandsonlabs.net"
 }
 
 variable "hosted_zone_id" {
   description = "Route53 hosted zone ID for domain validation"
   type        = string
-  default     = "Z10224201O5YOOAKWKGCR"  # Provide your hosted zone ID
+  default     = "Z1016218186LBOC34SU2L"  # Provide your hosted zone ID
 }
