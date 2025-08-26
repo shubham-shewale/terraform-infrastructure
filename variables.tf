@@ -19,7 +19,7 @@ variable "vpc_cidr" {
 variable "public_subnets" {
   description = "List of public subnet CIDRs for Ingress (3 for HA)"
   type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  default     = ["10.0.1.0/24"]
 }
 
 variable "webapp_vpc_cidr" {
@@ -43,13 +43,13 @@ variable "egress_vpc_cidr" {
 variable "egress_public_subnets" {
   description = "List of public subnet CIDRs for Egress (NAT GW)"
   type        = list(string)
-  default     = ["10.2.1.0/24", "10.2.2.0/24", "10.2.3.0/24"]
+  default     = ["10.2.1.0/24"]
 }
 
 variable "egress_private_subnets" {
   description = "List of private subnet CIDRs for Egress (TGW attachment)"
   type        = list(string)
-  default     = ["10.2.4.0/24", "10.2.5.0/24", "10.2.6.0/24"]
+  default     = ["10.2.4.0/24"]
 }
 
 variable "availability_zones" {

@@ -25,4 +25,4 @@ jobs:
           terraform_version: 1.9.5
 
       - run: terraform init
-      - run: terraform refresh
+      - run: terraform apply -auto-approve
