@@ -74,7 +74,7 @@
                 "AWS": "arn:aws:iam::127311923021:root"
             },
             "Action": "s3:PutObject",
-            "Resource": "arn:aws:s3:::alb-logs-211125418662-us-east-1/*"
+            "Resource": "arn:aws:s3:::alb-logs-058264474160-us-east-1/*"
         }
     ]
 }

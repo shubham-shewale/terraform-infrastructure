@@ -155,6 +155,7 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 # Security Group for VPC Endpoints
 resource "aws_security_group" "vpc_endpoint_sg" {
   vpc_id = module.webapp_vpc.vpc_id
+  name        = "vpc-endpoint-sg"
 
   ingress {
     from_port       = 443
@@ -218,10 +219,10 @@ resource "aws_vpc_endpoint" "ec2messages" {
 
 # Transit Gateway
 resource "aws_ec2_transit_gateway" "main" {
-  description                     = "Transit Gateway for VPC interconnect"
-  auto_accept_shared_attachments  = "disable"
-  default_route_table_association = "disable"
-  default_route_table_propagation = "disable"
+  description                      = "Transit Gateway for VPC interconnect"
+  auto_accept_shared_attachments   = "disable"
+  default_route_table_association  = "disable"
+  default_route_table_propagation  = "disable"
 
   tags = {
     Name        = "tgw-${var.environment}"
@@ -238,8 +239,6 @@ resource "aws_ec2_transit_gateway_route_table" "main" {
     Environment = var.environment
     Terraform   = "true"
   }
-
-  depends_on = [aws_ec2_transit_gateway.main]
 }
 
 # TGW Attachments
@@ -253,8 +252,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "ingress" {
     Environment = var.environment
     Terraform   = "true"
   }
-
-  depends_on = [module.vpc, aws_ec2_transit_gateway.main]
 }
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "webapp" {
@@ -267,8 +264,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "webapp" {
     Environment = var.environment
     Terraform   = "true"
   }
-
-  depends_on = [module.webapp_vpc, aws_ec2_transit_gateway.main]
 }
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
@@ -281,8 +276,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
     Environment = var.environment
     Terraform   = "true"
   }
-
-  depends_on = [module.egress_vpc, aws_ec2_transit_gateway.main]
 }
 
 # TGW Route Table Associations
@@ -299,13 +292,6 @@ resource "aws_ec2_transit_gateway_route_table_association" "main" {
 
   transit_gateway_attachment_id  = each.value
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
-
-  depends_on = [
-    aws_ec2_transit_gateway_vpc_attachment.ingress,
-    aws_ec2_transit_gateway_vpc_attachment.webapp,
-    aws_ec2_transit_gateway_vpc_attachment.egress,
-    aws_ec2_transit_gateway_route_table.main
-  ]
 }
 
 # TGW Route Table Propagations
@@ -314,13 +300,6 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "main" {
 
   transit_gateway_attachment_id  = each.value
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
-
-  depends_on = [
-    aws_ec2_transit_gateway_vpc_attachment.ingress,
-    aws_ec2_transit_gateway_vpc_attachment.webapp,
-    aws_ec2_transit_gateway_vpc_attachment.egress,
-    aws_ec2_transit_gateway_route_table.main
-  ]
 }
 
 # TGW Default Route to Egress
@@ -328,11 +307,6 @@ resource "aws_ec2_transit_gateway_route" "default" {
   destination_cidr_block         = "0.0.0.0/0"
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.main.id
-
-  depends_on = [
-    aws_ec2_transit_gateway_vpc_attachment.egress,
-    aws_ec2_transit_gateway_route_table.main
-  ]
 }
 
 # Routes in VPC Route Tables
